@@ -1,86 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import countriesService from './services/countries';
-import Countries from './components/Countries';
-import Country from './components/Country';
-import Weather from './components/Weather';
-
-
+import React, { useState, useEffect } from "react";
+import countriesService from "./services/countries";
+import Countries from "./components/Countries";
+import Country from "./components/Country";
+import Weather from "./components/Weather";
 
 function App() {
   const [countries, setCountries] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCountry, setSelectedCountry] = useState(null);
-  const [openWeatherCity, setOpenWeatherCity] = useState('');
+  const [openWeatherCity, setOpenWeatherCity] = useState("");
+  const [weatherData, setWeatherData] = useState(null);
 
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
   };
 
   useEffect(() => {
-    countriesService.getAll()
-      .then(response => {
+    countriesService
+      .getAll()
+      .then((response) => {
         setCountries(response);
-        if (response.length === 1) {
-          setOpenWeatherCity(response[0].capital.toString());
-        }
       })
-      .catch(error => {
-        console.error('Error fetching countries:', error);
+      .catch((error) => {
+        console.error("Error fetching countries:", error);
       });
-  }, [selectedCountry]); 
-
+  }, []);
 
   useEffect(() => {
-    if (openWeatherCity && openWeatherCity.trim() !== '') { // Проверяем, что openWeatherCity не undefined
-      countriesService.getCityFromOpenWeather(openWeatherCity)
-        .then(response => {
+    if (openWeatherCity && openWeatherCity.trim() !== "") {
+      countriesService
+        .getCityFromOpenWeather(openWeatherCity)
+        .then((response) => {
           console.log(response);
-          setOpenWeatherCity(response.name);
+          if (selectedCountry && selectedCountry.capital === openWeatherCity) {
+            setSelectedCountry((country) => ({
+              ...country,
+              weather: response,
+            }));
+          }
+          setWeatherData(response);
         })
-        .catch(error => {
-          console.error('Error fetching weather data:', error);
+        .catch((error) => {
+          console.error("Error fetching weather data:", error);
         });
     }
-  }, [openWeatherCity]);
+  }, [openWeatherCity, selectedCountry]);
 
-useEffect(() => {
-  if (openWeatherCity && openWeatherCity.trim() !== '') {
-    countriesService.getCityFromOpenWeather(openWeatherCity)
-      .then(response => {
-        console.log(response);
-        if (selectedCountry && selectedCountry.capital === openWeatherCity) {
-          setSelectedCountry(country => ({ ...country, weather: response }));
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching weather data:', error);
-      });
-  }
-}, [openWeatherCity, selectedCountry]);
-
-  const filteredCountries = countries && countries.length > 0 ?
-    countries.filter(country =>
-      country.name && country.name.common &&
+  const filteredCountries = countries.filter(
+    (country) =>
+      country.name &&
+      country.name.common &&
       country.name.common.toLowerCase().includes(searchQuery.toLowerCase())
-    ) :
-    [];
+  );
 
-    useEffect(() => {
-      const filteredCountries = countries.filter(country =>
-        country.name && country.name.common &&
-        country.name.common.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      if (filteredCountries.length === 1) {
-        setSelectedCountry(filteredCountries[0]);
-        setOpenWeatherCity(filteredCountries[0].capital.toString());
-        setSearchQuery('');
-      }
-    }, [countries, searchQuery]);
+  useEffect(() => {
+    if (filteredCountries.length === 1) {
+      setSelectedCountry(filteredCountries[0]);
+      setOpenWeatherCity(filteredCountries[0].capital.toString());
+    } else {
+      setSelectedCountry(null);
+      setOpenWeatherCity("");
+    }
+  }, [filteredCountries]);
 
-    const showCountry = (country) => {
-      setSelectedCountry(country);
-      setSearchQuery('');
-    };
+  const showCountry = (country) => {
+    setSelectedCountry(country);
+    setOpenWeatherCity(country.capital.toString());
+    setSearchQuery("");
+  };
+
+  const handleWeatherData = async (city) => {
+    try {
+      const data = await countriesService.getCityFromOpenWeather(city);
+      setWeatherData(data);
+    } catch (error) {
+      console.error("Error fetching weather data:", error);
+    }
+  };
 
   return (
     <div>
@@ -90,15 +86,28 @@ useEffect(() => {
         <input onChange={handleSearchChange} value={searchQuery} />
       </div>
       {filteredCountries.length > 0 && filteredCountries.length < 10 ? (
-        <Countries filteredCountries={filteredCountries} setCountry={showCountry}/>
+        <Countries
+          filteredCountries={filteredCountries}
+          setCountry={showCountry}
+        />
       ) : (
-        <p>{searchQuery ? 'Too many matches' : null}</p>
+        <p>{searchQuery ? "Too many matches" : null}</p>
       )}
       <div>
-        <Country country={selectedCountry} weather={openWeatherCity}/>
-        <Weather weather={selectedCountry && selectedCountry.weather}/>
+        <Country
+          country={selectedCountry}
+          weather={selectedCountry && selectedCountry.weather}
+        />
+        {weatherData && (
+          <div>
+            <h3>Weather in {weatherData.name}</h3>
+            <p>Temperature: {weatherData.main.temp}°C</p>
+            <p>Feels like: {weatherData.main.feels_like}°C</p>
+            <p>Humidity: {weatherData.main.humidity}%</p>
+            <p>Wind: {weatherData.wind.speed} m/s</p>
+          </div>
+        )}
       </div>
-      
     </div>
   );
 }

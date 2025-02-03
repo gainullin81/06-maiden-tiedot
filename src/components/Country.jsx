@@ -1,6 +1,6 @@
-import React from 'react';
+import React from "react";
 
-const Country = ({ country}) => {
+const Country = ({ country }) => {
   if (!country) return null;
   return (
     <div>
@@ -13,7 +13,7 @@ const Country = ({ country}) => {
           <li key={key}>{value}</li>
         ))}
       </ul>
-      <img src={country.flags.png} alt="Flag"/>
+      <img src={country.flags.png} alt="Flag" />
     </div>
   );
 };
